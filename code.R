@@ -1,3 +1,4 @@
 rm(list = ls())
-finalalldata = finalalldata[,-1]
+db = read.csv("finalalldata.csv")
+db = db[,-1]
 
