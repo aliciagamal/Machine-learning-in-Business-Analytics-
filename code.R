@@ -5,6 +5,9 @@ db = read.csv("finalalldata.csv")
 #cleaning: we start by removing 2 unecessary columns, used to label the database
 #for readibility but that are of no interest for the prediction of the class
 db = db[,-c(1,16)]
+db$label = as.factor(db$label)
+db$sex = as.factor(db$sex)
+db$smoke = as.factor(db$smoke)
 #let's check if the classes are balanced
 table(db$label)
 #0: 192, 1:441 --> unbalanced
