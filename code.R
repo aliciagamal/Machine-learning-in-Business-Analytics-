@@ -4,7 +4,7 @@ rm(list = ls())
 db = read.csv("finalalldata.csv")
 #cleaning: we start by removing 2 unecessary columns, used to label the database
 #for readibility but that are of no interest for the prediction of the class
-db = db[,-c(1,16)]
+db = db[,-c(1,17)]
 db$label = as.factor(db$label)
 db$sex = as.factor(db$sex)
 db$smoke = as.factor(db$smoke)
@@ -24,7 +24,7 @@ df_sum_label %>% view()
 #the thing above does not work but i will make it work soon 
 
 # MISSING VALUES 
-sum(is.na(db)) #100 missing values overall
+sum(is.na(db)) #113 missing values overall
 sum(is.na(db[,1])) #0
 sum(is.na(db[,2])) #0
 sum(is.na(db[,3])) #0
@@ -40,7 +40,6 @@ sum(is.na(db[,12])) #35
 sum(is.na(db[,13])) #0
 sum(is.na(db[,14])) #38
 sum(is.na(db[,15])) #0
-
 #column 12 and 14 are critical because they have a lot of missing values
 #we cannot delete these columns, as they are 
 #critical medical features that likely heavily impact the outcome 
@@ -65,17 +64,20 @@ describe(db_clean~label, skew=FALSE, IQR = TRUE)
 #boxplot
 x11()
 par(mfrow = c(1,2))
-boxplot(db_clean$age~db_clean$label) #age is much older for people with label = 1
-boxplot(db_clean$bmi~db_clean$label) #not a big difference in bmi
+boxplot(db_clean$age~db_clean$label, col = "red1") #age is much older for people with label = 1
+boxplot(db_clean$bmi~db_clean$label, col = "red1") #not a big difference in bmi
 #now for smoker status and sex
 # Assuming 'df' is your dataframe
 library(ggplot2)
 #for sex: 1 is women and 2 is men
 db_sex1_clean = db_clean[db_clean$sex==1,]
-db_sex2_clean = db_clean[db_clean$sex==2,]
-table(db_sex1_clean$label) #0:87, 1:311
-table(db_sex2_clean$label) #0:84, 1:71
-table(db_clean$sex) #1:398 and 2: 155 
+db_sex2_clean = db_clean[db_clean$sex==2,] 
+x11()
+par(mfrow = c(1,2))
+pie(table(db_sex1_clean$label), main = "percentage of sick and healthy women", col = c("red1","orange")) #0:87, 1:311 WOMEN
+pie(table(db_sex2_clean$label), main = "percentage of sick and healthy men", col = c("red1","orange")) #0:84, 1:71 MEN
+x11()
+pie(table(db_clean$sex), main = "percentage of men and women in the dataset", col = c("deeppink1","lightblue2"), labels = c("women","men")) #1:398 and 2: 155 
 #it is unbalanced by sex 
 library(ggplot2)
 # Create a bar plot
