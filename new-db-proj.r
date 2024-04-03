@@ -41,10 +41,10 @@ boxplot(db, col = "red1")
 #i have not seen if line 42-47 runs well 
 db_with_diabetes = db[db$Outcome == "1", ]
 db_without_diabetes = db[db$Outcome == "0", ]
-db_summary<- dfSummary(db_with_diabetes, max.distinct.values = 5)
-db_summary %>% view()
-db_summary<- dfSummary(db_without_diabetes, max.distinct.values = 5)
-db_summary %>% view()
+db_summary_diabetes<- dfSummary(db_with_diabetes, max.distinct.values = 5)
+db_summary_diabetes %>% view()
+db_summary_nodiabetes <- dfSummary(db_without_diabetes, max.distinct.values = 5)
+db_summary_nodiabetes %>% view()
 
 #boxplots
 x11()
