@@ -28,6 +28,7 @@ describe(db, omit=TRUE, skew=FALSE, IQR = TRUE)
 str(db)
 db_summary<- dfSummary(db, max.distinct.values = 5)
 db_summary %>% view()
+
 #identify outliers
 #1. boxplots 
 x11()
@@ -35,6 +36,16 @@ boxplot(db, col = "red1")
 #insulin has a lot of outliers 
 
 #bivariate analysis: explore the relationship between some predictors and the outcome
+#bivariate descriptive statistics
+
+#i have not seen if line 42-47 runs well 
+db_with_diabetes = db[db$Outcome == "1", ]
+db_without_diabetes = db[db$Outcome == "0", ]
+db_summary<- dfSummary(db_with_diabetes, max.distinct.values = 5)
+db_summary %>% view()
+db_summary<- dfSummary(db_without_diabetes, max.distinct.values = 5)
+db_summary %>% view()
+
 #boxplots
 x11()
 par(mfrow = c(2,2))
