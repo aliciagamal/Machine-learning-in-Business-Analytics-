@@ -26,6 +26,7 @@ barplot(table(db$Outcome), col = "red1",
 #univariate descriptive statistics
 describe(db, omit=TRUE, skew=FALSE, IQR = TRUE)
 str(db)
+library(magrittr)
 db_summary<- dfSummary(db, max.distinct.values = 5)
 db_summary %>% view()
 
@@ -90,7 +91,7 @@ ctrl = trainControl(method = "cv",
 #logistic regression
 logistic_model <- train(x, y, method = "glm", trControl = ctrl)
 logistic_summary <- summary(logistic_model)
-logistic_summary #1237.5
+logistic_summary #AIC: 1237.5
 
 #logistic regression with stepwise selection
 stepwise_model <- train(x, y, method = "glmStepAIC", trControl = ctrl)
@@ -107,7 +108,8 @@ lasso_summary
 best_model <- lasso_model$finalModel
 coef <- coef(best_model, s = lasso_model$bestTune$lambda)
 print(coef) #this is the important line to see what was selected
-#it puts skin thickness to 0, so it does not select that
+#the lasso model shrinks the coefficients, but it does not put 
+#anything to 0, it does not select anything 
 
 #PARAMETER TUNING: TUNE LAMBDA
 #1. confusion matrix and statistics to check the situation
@@ -123,6 +125,7 @@ print(tree_model$bestTune) #cp: 0.01
 library(rpart.plot)
 x11()
 rpart.plot(tree_model$finalModel, extra = 1)
+
 #classification tree with randomforest
 rf_model <- train(x, y, method = "rf", trControl = ctrl)
 rf_summary <- summary(rf_model)
@@ -152,8 +155,9 @@ tuneGrid = expand.grid(.mtry=c(1:ncol(x)))
 rf_model_mtry_tuned <- train(x, y, method = "rf", trControl = ctrl, tuneGrid = tuneGrid)
 summary(rf_model_mtry_tuned)
 rf_model_mtry_tuned
-#mtry = 1 --> very weird! accuracy = 1.
-#there must be something wrong... we will ask 
+#ok I re-run the code and I got mtry=2 and now 
+#the accuracy is 0.9984252...
+#did I set the seed wrong? no
 
 library(kernlab)
 set.seed(123)
@@ -177,7 +181,7 @@ grid <- expand.grid(C = c(0.01, 0.1, 1, 10, 100, 1000))
 svm_linear_tuned <- train(x,y, method = "svmLinear",
                          trControl= ctrl,
                          tuneGrid = grid)
-svm_linear_tuned
+svm_linear_tuned #C=10
 x11()
 plot(svm_linear_tuned)
 svm_linear_tuned$bestTune
@@ -191,7 +195,7 @@ svm_radial_tuned <- train(x,y, method = "svmRadial",
                          tuneGrid = grid_radial)
 svm_radial_tuned
 plot(svm_radial_tuned)
-svm_radial_tuned$bestTune
+svm_radial_tuned$bestTune #sigma 0.1 and C=500
 
 #PCA: principal component analysis 
 #now we will perform PCA on the training set
@@ -217,6 +221,9 @@ autoplot(pca, loadings = TRUE, loadings.label = TRUE)
 
 #which dimension reduction could we do? 
 
+
+#EVALUATING PERFORMANCES ON THE TEST SET
+
 #let's load the test set
 test_set = read.csv("Testing.csv")
 nrow(test_set) #308 instances
@@ -225,43 +232,114 @@ test_set <- test_set[!(test_set[, 3] == 0 | test_set[, 4] == 0 | test_set[, 5] =
 nrow(test_set) #156 test instances
 table(test_set$Outcome)
 #0:111 and 1:45  
+x_test = test_set[,-9]
+y_test = test_set[,9]
+y_test = as.factor(y_test)
 
-#let's now evaluate the prediction performance of each model
-#WARNING: I have not run this code yet, idk if it works
-#it's just a VERY rough draft!!!
-
-#logistic regression 
-prob_test_visit_logreg = predict(logistic_model, newdata = test_set , type= "response")
-pred_test_visit_logreg = ifelse(prob_test_visit_logreg >= 0.5,1,0)
-table(Pred=pred_test_visit_logreg, Obs = test_set$Outcome)
-#logistic regression with stepwise
-prob_test_visit_stepwise = predict(stepwise_model, newdata = test_set , type= "response")
-pred_test_visit_stepwise = ifelse(prob_test_visit_stepwise >= 0.5,1,0)
-table(Pred=pred_test_visit_stepwise, Obs = test_set$Outcome)
-#logistic regression with lasso 
-prob_test_visit_lasso = predict(lasso_model, newdata = test_set , type= "response")
-pred_test_visit_lasso = ifelse(prob_test_visit_lasso >= 0.5,1,0)
-table(Pred=pred_test_visit_lasso, Obs = test_set$Outcome)
-#classification tree 
-pred <- predict(tree_model, newdata= test_set, type="class")
-table(Pred=pred, Obs=test_set$Outcome)
-#to get the probabilities
-predict(tree_model, newdata=test_set, type="prob")
-#classification tree with random forest
-
-#svm linear tuned 
+#logistic regression  
+prob_test_visit_logreg = predict(logistic_model, newdata = test_set , type= "prob")
+pred_test_visit_logreg = ifelse(prob_test_visit_logreg$'1' >= 0.5,1,0)
+cm_logreg = table(Pred=pred_test_visit_logreg, Obs = test_set$Outcome)
+cm_logreg
+# Obs
+# Pred  0  1
+# 0 99 14
+# 1 12 31
 library(caret)
-linear_svm_tuned_pred <- predict(svm_linear_tuned, newdata = test_set)
-table(Pred=linear_svm_tuned_pred, obs=test_set$Outcome)
-confusionMatrix(data=linear_svm_tuned_pred, reference = test_set$Outcome)
-#svm radial tuned
-radial_svm_tuned_pred <- predict(svm_radial_tuned, newdata = test_set)
-table(Pred=radial_svm_tuned_pred, obs=test_set$Outcome)
-confusionMatrix(data=radial_svm_tuned_pred, reference = test_set$Outcome)
+cm_logreg = as.table(cm_logreg)
+metrics_logreg = confusionMatrix(cm_logreg)
+print(metrics_logreg)
+#accuracy: 0.8333 
+#no information rate: 0.7115
+#kappa: 0.5886  
+#sensitivity: 0.8919
+#specificity: 0.6889
+#pos pred value: 0.8761
+#neg pred value: 0.7209
+#balanced accuracy: 0.7904
+#POSITIVE CLASS 0!!!
 
-#confusion matrices
-#https://do-unil.github.io/mlba/labs/04_Metrics/Ex_ML_Scoring.html#classification-task
-#section: confusion matrices & prediction-based measures
+
+#logistic regression with stepwise
+prob_test_visit_stepwise = predict(stepwise_model, newdata = test_set , type= "prob")
+pred_test_visit_stepwise = ifelse(prob_test_visit_stepwise$'1' >= 0.5,1,0)
+cm_stepwise = table(Pred=pred_test_visit_stepwise, Obs = test_set$Outcome)
+cm_stepwise
+# #     Obs
+# Pred  0  1
+#    0 99 13
+#    1 12 32
+cm_stepwise = as.table(cm_stepwise)
+metrics_stepwise = confusionMatrix(cm_stepwise)
+print(metrics_stepwise)
+
+#logistic regression with lasso 
+prob_test_visit_lasso = predict(lasso_model, newdata = test_set , type= "prob")
+pred_test_visit_lasso = ifelse(prob_test_visit_lasso$'1' >= 0.5,1,0)
+cm_lasso = table(Pred=pred_test_visit_lasso, Obs = test_set$Outcome)
+cm_lasso
+# #    Obs
+# Pred  0  1
+#     0 99 15
+#     1 12 30
+cm_lasso = as.table(cm_lasso)
+metrics_lasso = confusionMatrix(cm_lasso)
+print(metrics_lasso)
+
+#classification tree  
+pred <- predict(tree_model, newdata= test_set, type="prob")
+pred_class <- ifelse(pred$'1' >= 0.5, 1, 0)
+cm_tree = table(Pred = pred_class, Obs = test_set$Outcome)
+cm_tree <- as.table(cm_tree)
+cm_tree
+#       Obs
+# Pred  0  1
+#     0 84 15
+#     1 27 30
+metrics_tree <- confusionMatrix(cm_tree)
+print(metrics_tree)
+
+#classification tree with random forest ... doesn't run...
+pred <- predict(rf_model, newdata= test_set, type="prob")
+pred_class <- ifelse(pred$'1' >= 0.5, 1, 0)
+cm_rf = table(Pred = pred_class, Obs = test_set$Outcome)
+cm_rf <- as.table(cm_rf)
+cm_rf
+# #    Obs
+# Pred  0  1
+#     0 98 13
+#     1 13 32
+metrics_rf <- confusionMatrix(cm_rf)
+print(metrics_rf)
+
+#tuned mtry classification tree with random forest rf_model_mtry_tuned
+pred <- predict(rf_model_mtry_tuned, newdata= test_set, type="prob")
+pred_class <- ifelse(pred$'1' >= 0.5, 1, 0)
+cm_rf_tuned = table(Pred = pred_class, Obs = test_set$Outcome)
+cm_rf_tuned <- as.table(cm_rf_tuned)
+cm_rf_tuned
+#       Obs
+# Pred  0  1
+#     0 99 17
+#     1 12 28
+metrics_rf_tuned <- confusionMatrix(cm_rf_tuned)
+print(metrics_rf_tuned)
+
+#svm linear tuned - does not work
+library(caret)
+linear_svm_tuned_pred <- predict(svm_linear_tuned, newdata = test_set) #error: kernlab class prediction calculations failed; returning NAs
+cm_svm <- table(Pred = linear_svm_tuned_pred, Obs = test_set$Outcome)
+cm_svm = as.table(cm_svm)
+cm_svm
+metrics_svm = confusionMatrix(cm_svm)
+metrics_svm
+#svm radial tuned
+radial_svm_tuned <-  predict(svm_radial_tuned, newdata = test_set) 
+cm_svm_radial <- table(Pred = radial_svm_tuned, Obs = test_set$Outcome)
+cm_svm_radial = as.table(cm_svm_radial)
+cm_svm_radial
+metrics_svm_radial = confusionMatrix(cm_svm_radial)
+metrics_svm_radial
 
 #caret::twoClassSummary --> to do AUC - ROC
 #after i do ROC I can tune the probablity threshold
