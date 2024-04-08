@@ -93,6 +93,13 @@ logistic_model <- train(x, y, method = "glm", trControl = ctrl)
 logistic_summary <- summary(logistic_model)
 logistic_summary #AIC: 1237.5
 
+#pred on training 
+prob_test_visit_logreg_train = predict(logistic_model, newdata = db , type= "prob")
+pred_test_visit_logreg_train = ifelse(prob_test_visit_logreg_train$'1' >= 0.5,1,0)
+cm_logreg_train = table(Pred=pred_test_visit_logreg_train, Obs = db$Outcome)
+cm_logreg_train
+
+
 #logistic regression with stepwise selection
 stepwise_model <- train(x, y, method = "glmStepAIC", trControl = ctrl)
 stepwise_summary <- summary(stepwise_model)
@@ -186,6 +193,14 @@ x11()
 plot(svm_linear_tuned)
 svm_linear_tuned$bestTune
 
+#predicition on the training set
+linear_svm_tuned_pred_train <- predict(svm_linear_tuned, newdata = db) #error: kernlab class prediction calculations failed; returning NAs
+cm_svm_train <- table(Pred = linear_svm_tuned_pred_train, Obs = db$Outcome)
+cm_svm_train = as.table(cm_svm_train)
+cm_svm_train
+metrics_svm_train = confusionMatrix(cm_svm_train)
+metrics_svm_train
+
 #tuning the radial model 
 grid_radial <- expand.grid(sigma = c(0.01, 0.02, 0.05, 0.1),
                            C = c(1, 10, 100, 500, 1000))
@@ -235,7 +250,7 @@ table(test_set$Outcome)
 x_test = test_set[,-9]
 y_test = test_set[,9]
 y_test = as.factor(y_test)
-
+test_set$Outcome = as.factor(test_set$Outcome)
 #logistic regression  
 prob_test_visit_logreg = predict(logistic_model, newdata = test_set , type= "prob")
 pred_test_visit_logreg = ifelse(prob_test_visit_logreg$'1' >= 0.5,1,0)
