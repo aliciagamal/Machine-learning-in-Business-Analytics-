@@ -185,19 +185,35 @@ svm_model_radial
 #tuning the linear model
 set.seed(123)
 grid <- expand.grid(C = c(0.01, 0.1, 1, 10, 100, 1000))
+str(db)
+head(db)
+ctrl = trainControl(method = "cv",
+                    number = 10)
+# tr_data = data.frame(x,y)
+# svm_linear_tuned <- train(y~.,data = tr_data, method = "svmLinear",
+#                          trControl= ctrl,
+#                          tuneGrid = grid)
 svm_linear_tuned <- train(x,y, method = "svmLinear",
-                         trControl= ctrl,
-                         tuneGrid = grid)
+                          trControl= ctrl,
+                          tuneGrid = grid)
 svm_linear_tuned #C=10
 x11()
 plot(svm_linear_tuned)
 svm_linear_tuned$bestTune
 
 #predicition on the training set
-linear_svm_tuned_pred_train <- predict(svm_linear_tuned, newdata = db) #error: kernlab class prediction calculations failed; returning NAs
+# linear_svm_tuned_pred_train <- predict(svm_linear_tuned, newdata = select(db, -Outcome)) #error: kernlab class prediction calculations failed; returning NAs
+new_db <- rename(db, y = Outcome) 
+str(new_db)
+str(tr_data)
+linear_svm_tuned_pred_train <- predict(svm_linear_tuned, newdata = new_db) #error: kernlab class prediction calculations failed; returning NAs
 cm_svm_train <- table(Pred = linear_svm_tuned_pred_train, Obs = db$Outcome)
 cm_svm_train = as.table(cm_svm_train)
 cm_svm_train
+# Obs
+# Pred   0   1
+#       0 712 189
+#       1  94 278
 metrics_svm_train = confusionMatrix(cm_svm_train)
 metrics_svm_train
 
@@ -211,6 +227,13 @@ svm_radial_tuned <- train(x,y, method = "svmRadial",
 svm_radial_tuned
 plot(svm_radial_tuned)
 svm_radial_tuned$bestTune #sigma 0.1 and C=500
+
+#prediction on the training set
+radial_svm_tuned_pred_train <- predict(svm_radial_tuned, newdata = select(db,-Outcome)) 
+cm_svm_train <- table(Pred = radial_svm_tuned_pred_train, Obs = db$Outcome)
+cm_svm_train = as.table(cm_svm_train)
+cm_svm_train
+
 
 #PCA: principal component analysis 
 #now we will perform PCA on the training set
@@ -340,21 +363,25 @@ cm_rf_tuned
 metrics_rf_tuned <- confusionMatrix(cm_rf_tuned)
 print(metrics_rf_tuned)
 
-#svm linear tuned - does not work
+#svm linear tuned - it works
 library(caret)
-linear_svm_tuned_pred <- predict(svm_linear_tuned, newdata = test_set) #error: kernlab class prediction calculations failed; returning NAs
+linear_svm_tuned_pred <- predict(svm_linear_tuned, newdata = test_set) 
 cm_svm <- table(Pred = linear_svm_tuned_pred, Obs = test_set$Outcome)
 cm_svm = as.table(cm_svm)
 cm_svm
 metrics_svm = confusionMatrix(cm_svm)
 metrics_svm
 #svm radial tuned
-radial_svm_tuned <-  predict(svm_radial_tuned, newdata = test_set) 
-cm_svm_radial <- table(Pred = radial_svm_tuned, Obs = test_set$Outcome)
-cm_svm_radial = as.table(cm_svm_radial)
-cm_svm_radial
-metrics_svm_radial = confusionMatrix(cm_svm_radial)
-metrics_svm_radial
+#prediction on the training set
+radial_svm_tuned_pred_test <- predict(svm_radial_tuned, newdata = select(test_set,-Outcome)) 
+str(test_set)
+cm_svm_train <- table(Pred = radial_svm_tuned_pred_test, Obs = test_set$Outcome)
+cm_svm_train = as.table(cm_svm_train)
+cm_svm_train
+# Obs
+# Pred  0  1
+#     0 90 15
+#     1 21 30
 
 #caret::twoClassSummary --> to do AUC - ROC
 #after i do ROC I can tune the probablity threshold
