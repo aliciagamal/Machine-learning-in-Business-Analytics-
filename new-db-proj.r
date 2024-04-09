@@ -98,13 +98,22 @@ prob_test_visit_logreg_train = predict(logistic_model, newdata = db , type= "pro
 pred_test_visit_logreg_train = ifelse(prob_test_visit_logreg_train$'1' >= 0.5,1,0)
 cm_logreg_train = table(Pred=pred_test_visit_logreg_train, Obs = db$Outcome)
 cm_logreg_train
-
+metrics_logreg_train = confusionMatrix(cm_logreg_train)
+metrics_logreg_train
 
 #logistic regression with stepwise selection
 stepwise_model <- train(x, y, method = "glmStepAIC", trControl = ctrl)
 stepwise_summary <- summary(stepwise_model)
 stepwise_summary #selects pregnancies, glucose, insulin, BMI, diabetes pedigree, age
 #AIC: 1234.1
+
+#prediction on training of stepwise selection
+prob_test_visit_stepwise_train = predict(stepwise_model, newdata = db , type= "prob")
+pred_test_visit_stepwise_train = ifelse(prob_test_visit_stepwise_train$'1' >= 0.5,1,0)
+cm_stepwise_train = table(Pred=pred_test_visit_stepwise_train, Obs = db$Outcome)
+cm_stepwise_train
+metrics_stepwise_train = confusionMatrix(cm_stepwise_train)
+metrics_stepwise_train
 
 #logistic regression with lasso
 lambda_values <- 10^seq(10, -2, length.out = 100)
@@ -117,6 +126,14 @@ coef <- coef(best_model, s = lasso_model$bestTune$lambda)
 print(coef) #this is the important line to see what was selected
 #the lasso model shrinks the coefficients, but it does not put 
 #anything to 0, it does not select anything 
+
+#logistic regression with lasso: metrics on training set
+prob_test_visit_lasso_train = predict(lasso_model, newdata = db , type= "prob")
+pred_test_visit_lasso_train = ifelse(prob_test_visit_lasso_train$'1' >= 0.5,1,0)
+cm_lasso_train = table(Pred=pred_test_visit_lasso_train, Obs = db$Outcome)
+cm_lasso_train
+metrics_lasso_train = confusionMatrix(cm_lasso_train)
+metrics_lasso_train
 
 #PARAMETER TUNING: TUNE LAMBDA
 #1. confusion matrix and statistics to check the situation
@@ -387,7 +404,20 @@ cm_svm_train
 #after i do ROC I can tune the probablity threshold
 #tune it on the training set (on logistic regression ok, in the other models??)
 
+#EDA ON THE TEST SET TO SEE WHY 
+x11()
+boxplot(test_set, col = "red1")
 
+x11()
+par(mfrow = c(2,2))
+boxplot(test_set$Age~test_set$Outcome, col = "red1")
+boxplot(test_set$BMI~test_set$Outcome, col = "red1")
+boxplot(test_set$Pregnancies~test_set$Outcome, col = "red1")
+boxplot(test_set$Insulin~test_set$Outcome, col = "red1")
+
+x11()
+barplot(table(test_set$Outcome), col = "red1",
+        main = "Distribution of Diabetes Outcome in the Test Set")
 
 
 
