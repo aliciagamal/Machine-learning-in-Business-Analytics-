@@ -59,6 +59,7 @@ describe(db~Outcome, skew=FALSE, IQR = TRUE)
 
 #correlation matrix
 correlation_matrix = cor(db)
+cor(db)
 library(ggplot2)
 library(reshape2)
 melted_correlation = melt(correlation_matrix)
@@ -252,6 +253,33 @@ cm_svm_train = as.table(cm_svm_train)
 cm_svm_train
 
 
+#BOOTSTRAPPED VERSIONS
+ctrl_boot = trainControl(method = "boot632", number = 200)
+#bootstrapped logistic regression
+log_boot = train(x,y,method="glm",trControl=ctrl_boot)
+log_boot_summary <- summary(log_boot)
+log_boot_summary
+#pred on training
+prob_test_visit_logreg_train_boot = predict(log_boot, newdata = db , type= "prob")
+pred_test_visit_logreg_train_boot = ifelse(prob_test_visit_logreg_train_boot$'1' >= 0.5,1,0)
+cm_logreg_train_boot = table(Pred=pred_test_visit_logreg_train_boot, Obs = db$Outcome)
+cm_logreg_train_boot
+metrics_logreg_train_boot = confusionMatrix(cm_logreg_train)
+metrics_logreg_train_boot
+#logistic regression with stepwise selection
+stepwise_boot <- train(x, y, method = "glmStepAIC", trControl = ctrl_boot)
+stepwise_summary_boot <- summary(stepwise_boot)
+stepwise_summary_boot #AIC: 1234.1 takes long to run
+#prediction on training 
+prob_test_visit_stepwise_train_boot = predict(stepwise_boot, newdata = db , type= "prob")
+pred_test_visit_stepwise_train_boot = ifelse(prob_test_visit_stepwise_train_boot$'1' >= 0.5,1,0)
+cm_stepwise_train_boot = table(Pred=pred_test_visit_stepwise_train_boot, Obs = db$Outcome)
+cm_stepwise_train_boot
+metrics_stepwise_train_boot = confusionMatrix(cm_stepwise_train_boot)
+metrics_stepwise_train_boot
+
+
+
 #PCA: principal component analysis 
 #now we will perform PCA on the training set
 #boxplot to see if I need to scale
@@ -420,5 +448,34 @@ barplot(table(test_set$Outcome), col = "red1",
         main = "Distribution of Diabetes Outcome in the Test Set")
 
 
+#CLUSTERING 
+head(db)
+dim(db)
+db_clust = db[,-9]
+head(db_clust)
+db_clust = scale(db_clust)
+#hierarchical
+library(cluster)
+library(factoextra)
+dist_mat = dist(db_clust)
+hclust_model = hclust(dist_mat)
+x11()
+plot(hclust_model)
+#cut tree into 2 clusters
+groups_hclust <- cutree(hclust_model,k=2)
 
-
+#k-means
+kmeans_model = kmeans(db_clust,centers=2)
+x11()
+fviz_cluster(kmeans_model,data=db_clust)
+#let's see how it relates to the outcome
+#1. let's add the cluster assignments to the original dataframe
+db$cluster = kmeans_model$cluster
+table(db$Outcome,db$cluster)
+# 1   2
+# 0 603 203
+# 1 141 326
+#cluster 1: 18,94% sick
+#cluster 2: 61,62% sick
+#so there is an assocition between clusters and diabetes
+#and it seems like it grows along the first components
