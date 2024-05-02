@@ -91,26 +91,27 @@ y = db[,9]
 #PCA: principal component analysis 
 #now we will perform PCA on the training set
 #boxplot to see if I need to scale
-x11()
-boxplot(x, col = "red1")
-#it's better to scale for PCA!
-scaled_numericaldata = scale(x)
-cor(scaled_numericaldata) #to interpret, this tells us if we need PCA
-pca = princomp(scaled_numericaldata)
-summary(pca)
-#visualize the meaning of loadings (we are taking the first 2 components)
-x11()
-par(mfrow = c(2,1))
-for(i in 1:2)
-  barplot(pca$loadings[,i],ylim = c(-1,1), col = "red1")
-pca$loadings
-#PCA biplot
-library(ggfortify)
-library(ggplot2)
-x11()
-autoplot(pca, loadings = TRUE, loadings.label = TRUE)
+# x11()
+# boxplot(x, col = "red1")
+# #it's better to scale for PCA!
+# scaled_numericaldata = scale(x)
+# cor(scaled_numericaldata) #to interpret, this tells us if we need PCA
+# pca = princomp(scaled_numericaldata)
+# summary(pca)
+# #visualize the meaning of loadings (we are taking the first 2 components)
+# x11()
+# par(mfrow = c(2,1))
+# for(i in 1:2)
+#   barplot(pca$loadings[,i],ylim = c(-1,1), col = "red1")
+# pca$loadings
+# #PCA biplot
+# library(ggfortify)
+# library(ggplot2)
+# x11()
+# autoplot(pca, loadings = TRUE, loadings.label = TRUE)
 
 #which dimension reduction could we do? 
+#models
 ctrl = trainControl(method = "cv",
                     number = 10)
 #logistic regression
@@ -215,7 +216,7 @@ metrics_lasso_train = confusionMatrix(cm_lasso_train)
 metrics_lasso_train
 
 
-#classification tree: pruned with autoprune
+#classification tree: pruned
 tuneGrid = expand.grid(.cp = seq(0.01, 0.5, 0.01)) #grid of cp values
 tree_model <- train(x, y, method = "rpart", trControl = ctrl, tuneGrid = tuneGrid)
 tree_summary <- summary(tree_model)
@@ -223,6 +224,13 @@ print(tree_model$bestTune) #cp: 0.01
 library(rpart.plot)
 x11()
 rpart.plot(tree_model$finalModel, extra = 1)
+#classification tree: metrics
+prob_train_tree = predict(tree_model, newdata = db, type = "prob")
+pred_train_tree = ifelse(prob_train_tree$'1'>=0.5,1,0)
+cm_tree_train = table(Pred = pred_train_tree, Obs = db$Outcome)
+print(cm_tree_train)
+metrics_tree_train = confusionMatrix(cm_tree_train)
+print(metrics_tree_train)
 
 #classification tree with randomforest
 rf_model <- train(x, y, method = "rf", trControl = ctrl)
@@ -230,6 +238,23 @@ rf_summary <- summary(rf_model)
 rf_summary
 x11()
 varImpPlot(rf_model$finalModel)
+#predictions and metrics
+# Fai predizioni con il tuo modello di Random Forest
+prob_test_rf_train = predict(rf_model, newdata = db, type = "prob")
+pred_test_rf_train = ifelse(prob_test_rf_train$'1' >= 0.5, 1, 0)
+cm_rf_train = table(Pred = pred_test_rf_train, Obs = db$Outcome)
+print(cm_rf_train)
+metrics_rf_train = confusionMatrix(cm_rf_train)
+print(metrics_rf_train)
+#on test set (still 1???)
+prob_test_rf_train = predict(rf_model, newdata = test_set, type = "prob")
+pred_test_rf_train = ifelse(prob_test_rf_train$'1' >= 0.5, 1, 0)
+cm_rf_train = table(Pred = pred_test_rf_train, Obs = db$Outcome)
+print(cm_rf_train)
+metrics_rf_train = confusionMatrix(cm_rf_train)
+print(metrics_rf_train)
+
+
 
 #plot of OOB error rate
 x11()
