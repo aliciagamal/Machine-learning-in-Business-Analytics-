@@ -87,6 +87,30 @@ library(ROCR)
 set.seed(123)
 x = db[,-9]
 y = db[,9]
+
+#PCA: principal component analysis 
+#now we will perform PCA on the training set
+#boxplot to see if I need to scale
+x11()
+boxplot(x, col = "red1")
+#it's better to scale for PCA!
+scaled_numericaldata = scale(x)
+cor(scaled_numericaldata) #to interpret, this tells us if we need PCA
+pca = princomp(scaled_numericaldata)
+summary(pca)
+#visualize the meaning of loadings (we are taking the first 2 components)
+x11()
+par(mfrow = c(2,1))
+for(i in 1:2)
+  barplot(pca$loadings[,i],ylim = c(-1,1), col = "red1")
+pca$loadings
+#PCA biplot
+library(ggfortify)
+library(ggplot2)
+x11()
+autoplot(pca, loadings = TRUE, loadings.label = TRUE)
+
+#which dimension reduction could we do? 
 ctrl = trainControl(method = "cv",
                     number = 10)
 #logistic regression
@@ -137,9 +161,58 @@ metrics_lasso_train = confusionMatrix(cm_lasso_train)
 metrics_lasso_train
 
 #PARAMETER TUNING: TUNE LAMBDA
-#1. confusion matrix and statistics to check the situation
-#see balanced accuracy and low sens or accuracy
-#look at ROC-AIC?
+#the only real interesting thing about this for the report are the values of lambda
+library(pROC)
+roc_obj_logreg = roc(db$Outcome, prob_test_visit_logreg_train$'1')
+X11()
+roc_logreg <- plot.roc(roc_obj_logreg, main="ROC Curve for Logistic Regression")
+
+roc_obj_stepwise <- roc(db$Outcome, prob_test_visit_stepwise_train$'1')
+roc_stepwise <- plot.roc(roc_obj_stepwise, main="ROC Curve for Stepwise Selection")
+
+roc_obj_lasso <- roc(db$Outcome, prob_test_visit_lasso_train$'1')
+roc_lasso <- plot.roc(roc_obj_lasso, main="ROC Curve for Lasso")
+
+roc_obj <- roc(db$Outcome, prob_test_visit_logreg_train$'1')
+coords_obj <- coords(roc_obj, "best")
+lambda_logreg <- coords_obj["threshold"]
+lambda_logreg #0.2979084
+
+roc_obj <- roc(db$Outcome, prob_test_visit_stepwise_train$'1')
+coords_obj <- coords(roc_obj, "best")
+lambda_step <- coords_obj["threshold"]
+lambda_step#0.3006133
+
+# Tuning the probability threshold lambda for lasso
+roc_obj <- roc(db$Outcome, prob_test_visit_lasso_train$'1')
+coords_obj <- coords(roc_obj, "best")
+lambda_lasso <- coords_obj["threshold"]
+lambda_lasso # 0.3006824
+
+#refit the 3 models with the new thresholds
+#logistic normal
+prob_test_visit_logreg_train = predict(logistic_model, newdata = db , type= "prob")
+pred_test_visit_logreg_train = ifelse(prob_test_visit_logreg_train$'1' >= 0.2979084,1,0)
+cm_logreg_train = table(Pred=pred_test_visit_logreg_train, Obs = db$Outcome)
+cm_logreg_train
+metrics_logreg_train = confusionMatrix(cm_logreg_train)
+metrics_logreg_train
+
+#logistic step 
+prob_test_visit_stepwise_train = predict(stepwise_model, newdata = db , type= "prob")
+pred_test_visit_stepwise_train = ifelse(prob_test_visit_stepwise_train$'1' >= 0.3006133,1,0)
+cm_stepwise_train = table(Pred=pred_test_visit_stepwise_train, Obs = db$Outcome)
+cm_stepwise_train
+metrics_stepwise_train = confusionMatrix(cm_stepwise_train)
+metrics_stepwise_train
+
+#logistic regression with lasso: metrics on training set
+prob_test_visit_lasso_train = predict(lasso_model, newdata = db , type= "prob")
+pred_test_visit_lasso_train = ifelse(prob_test_visit_lasso_train$'1' >= 0.3006824,1,0)
+cm_lasso_train = table(Pred=pred_test_visit_lasso_train, Obs = db$Outcome)
+cm_lasso_train
+metrics_lasso_train = confusionMatrix(cm_lasso_train)
+metrics_lasso_train
 
 
 #classification tree: pruned with autoprune
@@ -253,56 +326,32 @@ cm_svm_train = as.table(cm_svm_train)
 cm_svm_train
 
 
-#BOOTSTRAPPED VERSIONS
-ctrl_boot = trainControl(method = "boot632", number = 200)
-#bootstrapped logistic regression
-log_boot = train(x,y,method="glm",trControl=ctrl_boot)
-log_boot_summary <- summary(log_boot)
-log_boot_summary
-#pred on training
-prob_test_visit_logreg_train_boot = predict(log_boot, newdata = db , type= "prob")
-pred_test_visit_logreg_train_boot = ifelse(prob_test_visit_logreg_train_boot$'1' >= 0.5,1,0)
-cm_logreg_train_boot = table(Pred=pred_test_visit_logreg_train_boot, Obs = db$Outcome)
-cm_logreg_train_boot
-metrics_logreg_train_boot = confusionMatrix(cm_logreg_train)
-metrics_logreg_train_boot
-#logistic regression with stepwise selection
-stepwise_boot <- train(x, y, method = "glmStepAIC", trControl = ctrl_boot)
-stepwise_summary_boot <- summary(stepwise_boot)
-stepwise_summary_boot #AIC: 1234.1 takes long to run
-#prediction on training 
-prob_test_visit_stepwise_train_boot = predict(stepwise_boot, newdata = db , type= "prob")
-pred_test_visit_stepwise_train_boot = ifelse(prob_test_visit_stepwise_train_boot$'1' >= 0.5,1,0)
-cm_stepwise_train_boot = table(Pred=pred_test_visit_stepwise_train_boot, Obs = db$Outcome)
-cm_stepwise_train_boot
-metrics_stepwise_train_boot = confusionMatrix(cm_stepwise_train_boot)
-metrics_stepwise_train_boot
+# #BOOTSTRAPPED VERSIONS
+# ctrl_boot = trainControl(method = "boot632", number = 200)
+# #bootstrapped logistic regression
+# log_boot = train(x,y,method="glm",trControl=ctrl_boot)
+# log_boot_summary <- summary(log_boot)
+# log_boot_summary
+# #pred on training
+# prob_test_visit_logreg_train_boot = predict(log_boot, newdata = db , type= "prob")
+# pred_test_visit_logreg_train_boot = ifelse(prob_test_visit_logreg_train_boot$'1' >= 0.5,1,0)
+# cm_logreg_train_boot = table(Pred=pred_test_visit_logreg_train_boot, Obs = db$Outcome)
+# cm_logreg_train_boot
+# metrics_logreg_train_boot = confusionMatrix(cm_logreg_train)
+# metrics_logreg_train_boot
+# #logistic regression with stepwise selection
+# stepwise_boot <- train(x, y, method = "glmStepAIC", trControl = ctrl_boot)
+# stepwise_summary_boot <- summary(stepwise_boot)
+# stepwise_summary_boot #AIC: 1234.1 takes long to run
+# #prediction on training 
+# prob_test_visit_stepwise_train_boot = predict(stepwise_boot, newdata = db , type= "prob")
+# pred_test_visit_stepwise_train_boot = ifelse(prob_test_visit_stepwise_train_boot$'1' >= 0.5,1,0)
+# cm_stepwise_train_boot = table(Pred=pred_test_visit_stepwise_train_boot, Obs = db$Outcome)
+# cm_stepwise_train_boot
+# metrics_stepwise_train_boot = confusionMatrix(cm_stepwise_train_boot)
+# metrics_stepwise_train_boot
 
 
-
-#PCA: principal component analysis 
-#now we will perform PCA on the training set
-#boxplot to see if I need to scale
-x11()
-boxplot(x, col = "red1")
-#it's better to scale for PCA!
-scaled_numericaldata = scale(x)
-cor(scaled_numericaldata) #to interpret, this tells us if we need PCA
-pca = princomp(scaled_numericaldata)
-summary(pca)
-#visualize the meaning of loadings (we are taking the first 2 components)
-x11()
-par(mfrow = c(2,1))
-for(i in 1:2)
-  barplot(pca$loadings[,i],ylim = c(-1,1), col = "red1")
-pca$loadings
-#PCA biplot
-library(ggfortify)
-library(ggplot2)
-x11()
-autoplot(pca, loadings = TRUE, loadings.label = TRUE)
-
-#which dimension reduction could we do? 
 
 
 #EVALUATING PERFORMANCES ON THE TEST SET
@@ -448,6 +497,7 @@ barplot(table(test_set$Outcome), col = "red1",
         main = "Distribution of Diabetes Outcome in the Test Set")
 
 
+
 #CLUSTERING 
 head(db)
 dim(db)
@@ -479,3 +529,13 @@ table(db$Outcome,db$cluster)
 #cluster 2: 61,62% sick
 #so there is an assocition between clusters and diabetes
 #and it seems like it grows along the first components
+X11()
+fviz_nbclust(db_clust, kmeans, method = "wss", k.max = 25, verbose = FALSE)
+
+kmeans_model_best = kmeans(db_clust,centers=4)
+x11()
+fviz_cluster(kmeans_model_best,data=db_clust)
+#let's see how it relates to the outcome
+#1. let's add the cluster assignments to the original dataframe
+db$cluster = kmeans_model$cluster
+table(db$Outcome,db$cluster)
