@@ -210,10 +210,8 @@ ggplot(importance_df, aes(x = reorder(Variable, Importance), y = Importance)) +
   ylab("Importance") +
   ggtitle("Variable Importance Plot")
 
-#OOB error plot
+
 library(ggplot2)
-
-
 # Traccia dell'accuratezza al variare del numero di alberi
 x11()
 ggplot(tuned_rf_model$results, aes(x = mtry, y = Accuracy)) +
