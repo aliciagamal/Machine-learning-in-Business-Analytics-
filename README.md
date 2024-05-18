@@ -5,3 +5,5 @@ The code has been split in several files by topic (EDA, Clustering, Logistic Reg
 The random forest fit is inside file trees.R
 
 diabetes_report.html is a report created with the ydata_profiling library in Python.
+
+file "LASSO" contains the class-balancing operations done on the lasso regression.
