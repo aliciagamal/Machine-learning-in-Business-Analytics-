@@ -54,6 +54,11 @@ boxplot(db$Age~db$Outcome, col = "red1")
 boxplot(db$BMI~db$Outcome, col = "red1")
 boxplot(db$Pregnancies~db$Outcome, col = "red1")
 boxplot(db$Insulin~db$Outcome, col = "red1")
+
+boxplot(db$Glucose~db$Outcome, col = "red1")
+boxplot(db$SkinThickness~db$Outcome, col = "red1")
+boxplot(db$BloodPressure~db$Outcome, col = "red1")
+boxplot(db$DiabetesPedigreeFunction~db$Outcome, col = "red1")
 #bivariate descriptive statistics
 describe(db~Outcome, skew=FALSE, IQR = TRUE)
 
